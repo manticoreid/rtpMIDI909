@@ -1,3 +1,4 @@
+drum_sampler.h
 makeEspArduino.mk
 noteout-help.pd
 rtpMIDI909.ino
