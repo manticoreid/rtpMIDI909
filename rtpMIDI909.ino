@@ -101,6 +101,7 @@ void ICACHE_RAM_ATTR onTimerISR(){
 
     //----------------- Pulse Density Modulated 16-bit I2S DAC --------------------
      bool flag=i2s_write_lr_nb(0x8000 + DAC,0);
+     //bool flag=i2s_write_lr_nb( (DAC^0x8000),0);
     //-----------------------------------------------------------------------
 
      /*

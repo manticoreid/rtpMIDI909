@@ -1,0 +1,4 @@
+#ifndef MUTABLE_PEAKS_H
+#define MUTABLE_PEAKS_H
+
+#endif // MUTABLE_PEAKS_H
