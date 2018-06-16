@@ -29,6 +29,7 @@ void OnAppleMidiConnected(uint32_t ssrc, char* name);
 void OnAppleMidiDisconnected(uint32_t ssrc);
 void OnAppleMidiNoteOn(byte channel, byte note, byte velocity);
 void OnAppleMidiNoteOff(byte channel, byte note, byte velocity);
+void OnAppleMidiControlChange(byte channel, byte note, byte value);
 
 uint32_t i2sACC;
 uint8_t i2sCNT=32;
@@ -52,6 +53,9 @@ uint32_t SD16CNT;
 uint32_t samplecounter=100;
 uint32_t TRIG0, TRIG1, TRIG2, TRIG3, TRIG4, TRIG5, TRIG6, TRIG7, TRIG8, TRIG9, TRIG10;
 uint32_t OLDTRIG0,OLDTRIG1,OLDTRIG2,OLDTRIG3,OLDTRIG4,OLDTRIG5,OLDTRIG6,OLDTRIG7,OLDTRIG8,OLDTRIG9,OLDTRIG10;
+
+uint8_t pot_control[6];
+
 
 #include "drum_sampler.h"
 
@@ -90,20 +94,27 @@ void ICACHE_RAM_ATTR onTimerISR(){
   while (!(i2s_is_full())) { //Don't block the ISR
 
     DAC=SYNTH909();
-//    snd = t*(t^t+(t>>15|1)^(t-1280^t)>>10);
-//    snd = (t*5&t>>7)|(t*3&t>>10);
-//    snd = (t*9&t>>4|t*5&t>>7|t*3&t/1024)-1;
-    snd = (t>>6|t|t>>(t>>16))*10+((t>>11)&7);
-    snd = ((snd) ^ 32768);
 
     //BIT KRASHER
-    DAC = (DAC >> 14) << 14;
-    tc++;
-    t = tc >> 4;
+    // 14 - Thrash, SR:44100
+    DAC = (DAC >> pot_control[0]) << pot_control[0];
 
     //----------------- Pulse Density Modulated 16-bit I2S DAC --------------------
-     bool flag=i2s_write_lr_nb(0x8000+DAC,0);
+     bool flag=i2s_write_lr_nb(0x8000 + DAC,0);
     //-----------------------------------------------------------------------
+
+     /*
+    // DAC FOR BEATBYTE
+    //    snd = t*(t^t+(t>>pot_control[2]|1)^(t-1280^t)>>10);
+    //    snd = (t*5&t>>7)|(t*3&t>>10);
+    //    snd = (t*9&t>>4|t*5&t>>7|t*3&t/1024)-1;
+    //    snd = (t>>6|t|t>>(t>>pot_control[2]))*10+((t>>pot_control[3])&7);
+    tc++;
+    t = tc >> 2;
+    //----------------- Pulse Density Modulated 16-bit I2S DAC --------------------
+     bool flag=i2s_write_lr_nb((((((snd)<<8) ^ 32768))),0);
+    //-----------------------------------------------------------------------
+    */
 
   }
 
@@ -130,6 +141,7 @@ void setup() {
   AppleMIDI.begin("ESP909"); // 'ESP909' will show up as the session name
 
   AppleMIDI.OnReceiveNoteOn(OnAppleMidiNoteOn);
+  AppleMIDI.OnReceiveControlChange(OnAppleMidiControlChange);
 
   i2s_begin();
 //  i2s_set_rate(22050); //THRASH
@@ -166,6 +178,13 @@ void setup() {
   });
   ArduinoOTA.begin();
 
+  pot_control[0] = 0;
+  pot_control[1] = 0;
+  pot_control[2] = 0;
+  pot_control[3] = 0;
+  pot_control[4] = 0;
+  pot_control[5] = 0;
+
 
 
 }
@@ -175,6 +194,16 @@ void loop() {
  AppleMIDI.run();
 }
 
+
+void OnAppleMidiControlChange(byte channel, byte note, byte value) {
+    if (channel==10) {
+        if (note < 6)
+        {
+            pot_control[note] = value;
+        }
+
+    }
+}
 
 void OnAppleMidiNoteOn(byte channel, byte note, byte velocity) {
 
