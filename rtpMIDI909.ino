@@ -18142,7 +18142,7 @@ Ride Cymbal MIDI-51
 */
 
   if (channel==10) {
-    if(note==35) BD16CNT=100;
+    if(note==35) BD16CNT=0;
     if(note==36) BD16CNT=0;
     if(note==37) RS16CNT=0;
     if(note==38) SD16CNT=0;
