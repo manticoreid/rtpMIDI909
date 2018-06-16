@@ -74,7 +74,6 @@ uint16_t SYNTH909() {
   return DRUMTOTAL;
 }
 
-
 // Non-blocking I2S write for left and right 16-bit PCM
 bool ICACHE_FLASH_ATTR i2s_write_lr_nb(int16_t left, int16_t right){
   int sample = right & 0xFFFF;
@@ -82,12 +81,25 @@ bool ICACHE_FLASH_ATTR i2s_write_lr_nb(int16_t left, int16_t right){
   sample |= left & 0xFFFF;
   return i2s_write_sample_nb(sample);
 }
+uint32_t t = 0;
+uint32_t tc = 0;
+uint8_t snd = 0;
 
 void ICACHE_RAM_ATTR onTimerISR(){
 
   while (!(i2s_is_full())) { //Don't block the ISR
 
     DAC=SYNTH909();
+//    snd = t*(t^t+(t>>15|1)^(t-1280^t)>>10);
+//    snd = (t*5&t>>7)|(t*3&t>>10);
+//    snd = (t*9&t>>4|t*5&t>>7|t*3&t/1024)-1;
+    snd = (t>>6|t|t>>(t>>16))*10+((t>>11)&7);
+    snd = ((snd) ^ 32768);
+
+    //BIT KRASHER
+    DAC = (DAC >> 14) << 14;
+    tc++;
+    t = tc >> 4;
 
     //----------------- Pulse Density Modulated 16-bit I2S DAC --------------------
      bool flag=i2s_write_lr_nb(0x8000+DAC,0);
@@ -120,7 +132,8 @@ void setup() {
   AppleMIDI.OnReceiveNoteOn(OnAppleMidiNoteOn);
 
   i2s_begin();
-  i2s_set_rate(44100);
+//  i2s_set_rate(22050); //THRASH
+  i2s_set_rate(44100); //CLEAN
   timer1_attachInterrupt(onTimerISR); //Attach our sampling ISR
   timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
   timer1_write(2000); //Service at 2mS intervall
