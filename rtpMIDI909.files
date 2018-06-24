@@ -19,6 +19,8 @@ module/Module.cpp
 module/Module.h
 module/ModuleAnalogInput.cpp
 module/ModuleAnalogInput.h
+module/ModuleConstant.cpp
+module/ModuleConstant.h
 module/ModuleDelay.cpp
 module/ModuleDelay.h
 module/ModuleDigitalInput.cpp
