@@ -14,10 +14,12 @@
 
 #include "lib/AudioOutputI2S.h"
 
+#include "bjorklund.h"
 //#include "drum_sampler.h"
 #include "gamelan.h"
 
 AudioOutputI2S soundOut;
+
 
 extern "C" {
 #include "user_interface.h"
@@ -46,12 +48,14 @@ void OnAppleMidiDisconnected(uint32_t ssrc);
 void OnAppleMidiNoteOn(byte channel, byte note, byte velocity);
 void OnAppleMidiNoteOff(byte channel, byte note, byte velocity);
 void OnAppleMidiControlChange(byte channel, byte note, byte value);
+void onTimerSEQ();
 
 int16_t DAC=0;
 uint16_t err;
 
 uint8_t pot_control[6];
 
+Ticker seqTimer;
 
 int16_t SYNTH909() {
   int32_t DRUMTOTAL=0;
@@ -134,6 +138,8 @@ void ICACHE_RAM_ATTR onTimerISR(){
   timer1_write(2000);//Next in 2mS
 }
 
+EuclideanModule pattern[4];
+
 void setup() {
   //WiFi.forceSleepBegin();
   //delay(1);
@@ -212,8 +218,32 @@ void setup() {
   pot_control[4] = 0;
   pot_control[5] = 0;
 
+  pattern[0].createPattern(8,4);
+  pattern[1].createPattern(12,5);
+  pattern[2].createPattern(10,2);
+  pattern[3].createPattern(20,7);
 
+  seqTimer.attach(0.1, onTimerSEQ);
 
+}
+
+void onTimerSEQ(){
+    if(pattern[0].nextPattern())
+    {
+        TONGCNT=0;
+    }
+    if(pattern[1].nextPattern())
+    {
+        LUNGCNT=0;
+    }
+    if(pattern[2].nextPattern())
+    {
+        TAKCNT=0;
+    }
+    if(pattern[3].nextPattern())
+    {
+        THUNGCNT=0;
+    }
 }
 
 void loop() {
@@ -224,10 +254,12 @@ void loop() {
 
 void OnAppleMidiControlChange(byte channel, byte note, byte value) {
     if (channel==10) {
-        if (note < 6)
-        {
-            pot_control[note] = value;
-        }
+//        if (note < 6)
+//        {
+//            pot_control[note] = value;
+//        }
+
+//        if (note == 7) pattern[0].createPattern();
     }
 }
 
@@ -255,6 +287,8 @@ Ride Cymbal MIDI-51
 
 
   if (channel==10) {
+    if(note==28) seqTimer.attach(0.1, onTimerSEQ);
+    if(note==29) seqTimer.detach();
     if(note==30) TONGCNT=0;
     if(note==31) THUNGCNT=0;
     if(note==32) TAKCNT=0;

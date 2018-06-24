@@ -16,7 +16,7 @@ struct {
 
 //Adapted from https://github.com/mxmxmx/temps_utile-/blob/master/soft/t_u_REV/APP_CLK.ino#L1374
 
-uint32_t euclidean(uint32_t step, uint32_t beat, uint32_t offset)
+uint32_t euclidean(uint8_t step, uint8_t beat, uint8_t offset)
 {
 // the three parameters:
 uint32_t _n, _k, _offset;
@@ -34,6 +34,44 @@ _offset = step-offset;
     }
     return rhythm_bit;
 }
+
+class EuclideanModule
+{
+  public:
+    uint32_t pattern;
+    uint8_t stepsize;
+    uint8_t curstep;
+
+    EuclideanModule() {
+        curstep = 0;
+        pattern = 0;
+        stepsize = 0;
+    }
+
+    void createPattern(uint8_t step, uint8_t beat, uint8_t offset){
+        stepsize = step;
+        pattern = euclidean(step, beat, offset);
+    }
+
+    void createPattern(uint8_t step, uint8_t beat){
+        createPattern(step,beat,0);
+    }
+
+    uint32_t nextPattern()
+    {
+        uint32_t pat = getPattern(curstep);
+        curstep++;
+        if (curstep> (stepsize-1) ) curstep = 0;
+        return pat;
+    }
+
+    uint32_t getPattern(uint8_t step)
+    {
+        return (pattern & (1<<step));
+    }
+};
+
+
 
 //Adapted from https://github.com/Zirafkend/Bjorklund/blob/master/Bjorklund.h
 
