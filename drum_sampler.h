@@ -12,6 +12,19 @@
 #define SD16LEN 5577UL
 
 
+uint32_t BD16CNT;
+uint32_t CP16CNT;
+uint32_t CR16CNT;
+uint32_t HH16CNT;
+uint32_t HT16CNT;
+uint32_t LT16CNT;
+uint32_t MT16CNT;
+uint32_t CH16CNT;
+uint32_t OH16CNT;
+uint32_t RD16CNT;
+uint32_t RS16CNT;
+uint32_t SD16CNT;
+
 const uint16_t BD16[3796] PROGMEM = {
  40,  85, 137, 144, -30, -347, -609, -785, // 0-7
 -856, -837, -710, -530, -321, -136,  10, 111, // 8-15

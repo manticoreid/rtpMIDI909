@@ -14,6 +14,9 @@
 
 #include "lib/AudioOutputI2S.h"
 
+//#include "drum_sampler.h"
+#include "gamelan.h"
+
 AudioOutputI2S soundOut;
 
 extern "C" {
@@ -27,6 +30,16 @@ char pass[] = "rumah4321";    // your network password (use for WPA, or use as k
 
 APPLEMIDI_CREATE_INSTANCE(WiFiUDP, AppleMIDI); // see definition in AppleMidi_Defs.h
 
+
+// Non-blocking I2S write for left and right 16-bit PCM
+//bool ICACHE_FLASH_ATTR i2s_write_lr_nb(int16_t left, int16_t right){
+//  int sample = right & 0xFFFF;
+//  sample = sample << 16;
+//  sample |= left & 0xFFFF;
+//  return i2s_write_sample_nb(sample);
+//}
+
+
 // Forward declaration
 void OnAppleMidiConnected(uint32_t ssrc, char* name);
 void OnAppleMidiDisconnected(uint32_t ssrc);
@@ -34,68 +47,37 @@ void OnAppleMidiNoteOn(byte channel, byte note, byte velocity);
 void OnAppleMidiNoteOff(byte channel, byte note, byte velocity);
 void OnAppleMidiControlChange(byte channel, byte note, byte value);
 
-uint32_t i2sACC;
-uint8_t i2sCNT=32;
 int16_t DAC=0;
 uint16_t err;
-
-uint32_t BD16CNT;
-uint32_t CP16CNT;
-uint32_t CR16CNT;
-uint32_t HH16CNT;
-uint32_t HT16CNT;
-uint32_t LT16CNT;
-uint32_t MT16CNT;
-uint32_t CH16CNT;
-uint32_t OH16CNT;
-uint32_t RD16CNT;
-uint32_t RS16CNT;
-uint32_t SD16CNT;
-
-
-uint32_t samplecounter=100;
 
 uint8_t pot_control[6];
 
 
-#include "drum_sampler.h"
-#include "gamelan.h"
-
 int16_t SYNTH909() {
   int32_t DRUMTOTAL=0;
-
   if (TONGCNT<TONGLEN) DRUMTOTAL+=(pgm_read_word_near(TONG + TONGCNT++)^32768)-32768;
   if (THUNGCNT<THUNGLEN) DRUMTOTAL+=(pgm_read_word_near(THUNG + THUNGCNT++)^32768)-32768;
   if (TAKCNT<TAKLEN) DRUMTOTAL+=(pgm_read_word_near(TAK + TAKCNT++)^32768)-32768;
   if (LUNGCNT<LUNGLEN) DRUMTOTAL+=(pgm_read_word_near(LUNG + LUNGCNT++)^32768)-32768;
   if (DLANGCNT<DLANGLEN) DRUMTOTAL+=(pgm_read_word_near(DLANG + DLANGCNT++)^32768)-32768;
-
-
-  if (BD16CNT<BD16LEN) DRUMTOTAL+=(pgm_read_word_near(BD16 + BD16CNT++)^32768)-32768;
-  if (BD16CNT<BD16LEN) DRUMTOTAL+=(pgm_read_word_near(BD16 + BD16CNT++)^32768)-32768;
-  if (CP16CNT<CP16LEN) DRUMTOTAL+=(pgm_read_word_near(CP16 + CP16CNT++)^32768)-32768;
-  if (CR16CNT<CR16LEN) DRUMTOTAL+=(pgm_read_word_near(CR16 + CR16CNT++)^32768)-32768;
-  if (HH16CNT<HH16LEN) DRUMTOTAL+=(pgm_read_word_near(HH16 + HH16CNT++)^32768)-32768;
-  if (HT16CNT<HT16LEN) DRUMTOTAL+=(pgm_read_word_near(HT16 + HT16CNT++)^32768)-32768;
-  if (LT16CNT<LT16LEN) DRUMTOTAL+=(pgm_read_word_near(LT16 + LT16CNT++)^32768)-32768;
-  if (MT16CNT<MT16LEN) DRUMTOTAL+=(pgm_read_word_near(MT16 + MT16CNT++)^32768)-32768;
-  if (OH16CNT<OH16LEN) DRUMTOTAL+=(pgm_read_word_near(OH16 + OH16CNT++)^32768)-32768;
-  if (RD16CNT<RD16LEN) DRUMTOTAL+=(pgm_read_word_near(RD16 + RD16CNT++)^32768)-32768;
-  if (RS16CNT<RS16LEN) DRUMTOTAL+=(pgm_read_word_near(RS16 + RS16CNT++)^32768)-32768;
-  if (SD16CNT<SD16LEN) DRUMTOTAL+=(pgm_read_word_near(SD16 + SD16CNT++)^32768)-32768;
+//  if (BD16CNT<BD16LEN) DRUMTOTAL+=(pgm_read_word_near(BD16 + BD16CNT++)^32768)-32768;
+//  if (BD16CNT<BD16LEN) DRUMTOTAL+=(pgm_read_word_near(BD16 + BD16CNT++)^32768)-32768;
+//  if (CP16CNT<CP16LEN) DRUMTOTAL+=(pgm_read_word_near(CP16 + CP16CNT++)^32768)-32768;
+//  if (CR16CNT<CR16LEN) DRUMTOTAL+=(pgm_read_word_near(CR16 + CR16CNT++)^32768)-32768;
+//  if (HH16CNT<HH16LEN) DRUMTOTAL+=(pgm_read_word_near(HH16 + HH16CNT++)^32768)-32768;
+//  if (HT16CNT<HT16LEN) DRUMTOTAL+=(pgm_read_word_near(HT16 + HT16CNT++)^32768)-32768;
+//  if (LT16CNT<LT16LEN) DRUMTOTAL+=(pgm_read_word_near(LT16 + LT16CNT++)^32768)-32768;
+//  if (MT16CNT<MT16LEN) DRUMTOTAL+=(pgm_read_word_near(MT16 + MT16CNT++)^32768)-32768;
+//  if (OH16CNT<OH16LEN) DRUMTOTAL+=(pgm_read_word_near(OH16 + OH16CNT++)^32768)-32768;
+//  if (RD16CNT<RD16LEN) DRUMTOTAL+=(pgm_read_word_near(RD16 + RD16CNT++)^32768)-32768;
+//  if (RS16CNT<RS16LEN) DRUMTOTAL+=(pgm_read_word_near(RS16 + RS16CNT++)^32768)-32768;
+//  if (SD16CNT<SD16LEN) DRUMTOTAL+=(pgm_read_word_near(SD16 + SD16CNT++)^32768)-32768;
   if  (DRUMTOTAL>32767) DRUMTOTAL=32767;
   if  (DRUMTOTAL<-32767) DRUMTOTAL=-32767;
 //  DRUMTOTAL+=32768;
   return DRUMTOTAL;
 }
 
-// Non-blocking I2S write for left and right 16-bit PCM
-bool ICACHE_FLASH_ATTR i2s_write_lr_nb(int16_t left, int16_t right){
-  int sample = right & 0xFFFF;
-  sample = sample << 16;
-  sample |= left & 0xFFFF;
-  return i2s_write_sample_nb(sample);
-}
 uint32_t t = 0;
 uint32_t tc = 0;
 uint8_t snd = 0;
@@ -164,8 +146,6 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
   }
-
-
 
   // These are fixed by the synthesis routines
   soundOut.SetRate(44100);
@@ -248,7 +228,6 @@ void OnAppleMidiControlChange(byte channel, byte note, byte value) {
         {
             pot_control[note] = value;
         }
-
     }
 }
 
@@ -281,22 +260,22 @@ Ride Cymbal MIDI-51
     if(note==32) TAKCNT=0;
     if(note==33) LUNGCNT=0;
     if(note==34) DLANGCNT=0;
-    if(note==35) BD16CNT=0;
-    if(note==36) BD16CNT=0;
-    if(note==37) RS16CNT=0;
-    if(note==38) SD16CNT=0;
-    if(note==39) CP16CNT=0;
-    if(note==40) SD16CNT=0;
-    if(note==41) LT16CNT=0;
-    if(note==42) HH16CNT=0;
-    if(note==43) LT16CNT=0;
-    if(note==44) HH16CNT=0;
-    if(note==45) MT16CNT=0;
-    if(note==46) OH16CNT=0;
-    if(note==47) MT16CNT=0;
-    if(note==48) HT16CNT=0;
-    if(note==49) CR16CNT=0;
-    if(note==50) HT16CNT=0;
-    if(note==51) RD16CNT=0;
+//    if(note==35) BD16CNT=0;
+//    if(note==36) BD16CNT=0;
+//    if(note==37) RS16CNT=0;
+//    if(note==38) SD16CNT=0;
+//    if(note==39) CP16CNT=0;
+//    if(note==40) SD16CNT=0;
+//    if(note==41) LT16CNT=0;
+//    if(note==42) HH16CNT=0;
+//    if(note==43) LT16CNT=0;
+//    if(note==44) HH16CNT=0;
+//    if(note==45) MT16CNT=0;
+//    if(note==46) OH16CNT=0;
+//    if(note==47) MT16CNT=0;
+//    if(note==48) HT16CNT=0;
+//    if(note==49) CR16CNT=0;
+//    if(note==50) HT16CNT=0;
+//    if(note==51) RD16CNT=0;
   }
 }
