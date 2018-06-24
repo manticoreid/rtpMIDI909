@@ -12,6 +12,9 @@
 #include <ESP8266mDNS.h>
 #include <ArduinoOTA.h>
 
+#include "lib/AudioOutputI2S.h"
+
+AudioOutputI2S soundOut;
 
 extern "C" {
 #include "user_interface.h"
@@ -33,7 +36,7 @@ void OnAppleMidiControlChange(byte channel, byte note, byte value);
 
 uint32_t i2sACC;
 uint8_t i2sCNT=32;
-uint16_t DAC=0x8000;
+int16_t DAC=0;
 uint16_t err;
 
 uint32_t BD16CNT;
@@ -51,16 +54,24 @@ uint32_t SD16CNT;
 
 
 uint32_t samplecounter=100;
-uint32_t TRIG0, TRIG1, TRIG2, TRIG3, TRIG4, TRIG5, TRIG6, TRIG7, TRIG8, TRIG9, TRIG10;
-uint32_t OLDTRIG0,OLDTRIG1,OLDTRIG2,OLDTRIG3,OLDTRIG4,OLDTRIG5,OLDTRIG6,OLDTRIG7,OLDTRIG8,OLDTRIG9,OLDTRIG10;
 
 uint8_t pot_control[6];
 
 
 #include "drum_sampler.h"
+#include "gamelan.h"
 
-uint16_t SYNTH909() {
+int16_t SYNTH909() {
   int32_t DRUMTOTAL=0;
+
+  if (TONGCNT<TONGLEN) DRUMTOTAL+=(pgm_read_word_near(TONG + TONGCNT++)^32768)-32768;
+  if (THUNGCNT<THUNGLEN) DRUMTOTAL+=(pgm_read_word_near(THUNG + THUNGCNT++)^32768)-32768;
+  if (TAKCNT<TAKLEN) DRUMTOTAL+=(pgm_read_word_near(TAK + TAKCNT++)^32768)-32768;
+  if (LUNGCNT<LUNGLEN) DRUMTOTAL+=(pgm_read_word_near(LUNG + LUNGCNT++)^32768)-32768;
+  if (DLANGCNT<DLANGLEN) DRUMTOTAL+=(pgm_read_word_near(DLANG + DLANGCNT++)^32768)-32768;
+
+
+  if (BD16CNT<BD16LEN) DRUMTOTAL+=(pgm_read_word_near(BD16 + BD16CNT++)^32768)-32768;
   if (BD16CNT<BD16LEN) DRUMTOTAL+=(pgm_read_word_near(BD16 + BD16CNT++)^32768)-32768;
   if (CP16CNT<CP16LEN) DRUMTOTAL+=(pgm_read_word_near(CP16 + CP16CNT++)^32768)-32768;
   if (CR16CNT<CR16LEN) DRUMTOTAL+=(pgm_read_word_near(CR16 + CR16CNT++)^32768)-32768;
@@ -74,7 +85,7 @@ uint16_t SYNTH909() {
   if (SD16CNT<SD16LEN) DRUMTOTAL+=(pgm_read_word_near(SD16 + SD16CNT++)^32768)-32768;
   if  (DRUMTOTAL>32767) DRUMTOTAL=32767;
   if  (DRUMTOTAL<-32767) DRUMTOTAL=-32767;
-  DRUMTOTAL+=32768;
+//  DRUMTOTAL+=32768;
   return DRUMTOTAL;
 }
 
@@ -88,6 +99,7 @@ bool ICACHE_FLASH_ATTR i2s_write_lr_nb(int16_t left, int16_t right){
 uint32_t t = 0;
 uint32_t tc = 0;
 uint8_t snd = 0;
+int16_t sample[2];
 
 void ICACHE_RAM_ATTR onTimerISR(){
 
@@ -99,8 +111,14 @@ void ICACHE_RAM_ATTR onTimerISR(){
     // 14 - Thrash, SR:44100
     DAC = (DAC >> pot_control[0]) << pot_control[0];
 
+    sample[0] = DAC;
+    sample[1] = 0;
+
+    soundOut.ConsumeSample(sample);
+
+
     //----------------- Pulse Density Modulated 16-bit I2S DAC --------------------
-     bool flag=i2s_write_lr_nb(0x8000 + DAC,0);
+//     bool flag=i2s_write_lr_nb(0x8000 + DAC,0);
      //bool flag=i2s_write_lr_nb( (DAC^0x8000),0);
     //-----------------------------------------------------------------------
 
@@ -116,6 +134,18 @@ void ICACHE_RAM_ATTR onTimerISR(){
      bool flag=i2s_write_lr_nb((((((snd)<<8) ^ 32768))),0);
     //-----------------------------------------------------------------------
     */
+
+//          snd = (t*5&t>>7)|(t*3&t>>10);
+
+//    snd = (t>>6|t|t>>(t>>pot_control[2]))*10+((t>>pot_control[3])&7);
+//    tc++;
+//    t = tc >> 2;
+
+//        sample[0] = snd^0x8000;
+//        sample[1] = 0;
+
+//        soundOut.ConsumeSample(sample);
+
 
   }
 
@@ -135,6 +165,22 @@ void setup() {
     delay(500);
   }
 
+
+
+  // These are fixed by the synthesis routines
+  soundOut.SetRate(44100);
+  soundOut.SetBitsPerSample(16);
+  soundOut.SetChannels(2);
+  soundOut.begin();
+
+  /*
+  //DAC USING AudioOut Lib
+  soundOut.SetRate(44100);
+  soundOut.SetBitsPerSample(16);
+  soundOut.SetChannels(2);
+  soundOut.begin();
+  */
+
   //Serial.print(F("IP address is "));
   //Serial.println(WiFi.localIP());
 
@@ -144,9 +190,9 @@ void setup() {
   AppleMIDI.OnReceiveNoteOn(OnAppleMidiNoteOn);
   AppleMIDI.OnReceiveControlChange(OnAppleMidiControlChange);
 
-  i2s_begin();
+//  i2s_begin();
 //  i2s_set_rate(22050); //THRASH
-  i2s_set_rate(44100); //CLEAN
+//  i2s_set_rate(44100); //CLEAN
   timer1_attachInterrupt(onTimerISR); //Attach our sampling ISR
   timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
   timer1_write(2000); //Service at 2mS intervall
@@ -228,7 +274,13 @@ Hi Tom MIDI-50
 Ride Cymbal MIDI-51
 */
 
+
   if (channel==10) {
+    if(note==30) TONGCNT=0;
+    if(note==31) THUNGCNT=0;
+    if(note==32) TAKCNT=0;
+    if(note==33) LUNGCNT=0;
+    if(note==34) DLANGCNT=0;
     if(note==35) BD16CNT=0;
     if(note==36) BD16CNT=0;
     if(note==37) RS16CNT=0;

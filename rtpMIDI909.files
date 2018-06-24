@@ -1,5 +1,17 @@
+bjorklund.h
 drum_sampler.h
+drum_sampler.h
+gamelan.h
+lib/AudioOutput.h
+lib/AudioOutput.h
+lib/AudioOutputI2S.cpp
+lib/AudioOutputI2S.cpp
+lib/AudioOutputI2S.h
+lib/AudioOutputI2S.h
+lib/AudioStatus.h
+lib/AudioStatus.h
 makeEspArduino.mk
+mutable_peaks.h
 noteout-help.pd
 rtpMIDI909.ino
 Makefile

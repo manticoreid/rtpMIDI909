@@ -29,3 +29,4 @@
 /Users/xcorex/Library/Arduino15/packages/esp8266/hardware/esp8266/2.4.1/variants/%{BOARD}
 /Users/xcorex/Documents/Arduino/libraries/AppleMIDI/src/
 /Users/xcorex/Documents/Arduino/libraries/AppleMIDI/src/utility
+lib
