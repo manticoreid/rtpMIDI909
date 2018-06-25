@@ -55,7 +55,8 @@ uint32_t euclid_pattern[560] = {0,1,0,1,3,0,1,3,7,0,1,5,7,15,0,1,5,21,15,31,0
 uint32_t euclidean_arr(uint8_t step, uint8_t beat, uint8_t offset)
 {
     uint32_t pattern =  euclid_pattern[euclid_index[step]+beat];
-    uint32_t pattern_off = ((pattern<<(offset%step))&(euclid_mask_full >> (31-(step-1))))|(pattern>> (step-((offset%step))));
+    uint8_t offset_clamp = offset % step;
+    uint32_t pattern_off = ((pattern<<(offset_clamp))&(euclid_mask_full >> (31-(step-1))))|(pattern>> (step-((offset_clamp))));
 //	printf("off: %u\n", ((offset%step)) );
 //	printf("mask: %u\n", ((euclid_mask_full >> (31-(step-1)))) );
 //	printf("%i %i\n", pattern, pattern_off);
@@ -96,21 +97,42 @@ class EuclideanModule
   public:
     uint32_t pattern;
     uint8_t stepsize;
+    uint8_t beatnum;
+    uint8_t offsetnum;
+
     uint8_t curstep;
 
     EuclideanModule() {
         curstep = 0;
         pattern = 0;
         stepsize = 0;
+        breatnum = 0;
+        offsetnum = 0;
     }
 
     void setPattern(uint8_t step, uint8_t beat, uint8_t offset){
         stepsize = step;
+        breatnum = beat;
+        offsetnum = offset;
         pattern = euclidean_arr(step, beat, offset);
     }
 
     void setPattern(uint8_t step, uint8_t beat){
-        createPattern(step,beat,0);
+        setPattern(step,beat,0);
+    }
+
+    void setBeat(uint8_t beat) {
+        if (beat>stepsize) stepsize = beat;
+        setPattern(stepsize, beat, offsetnum);
+    }
+
+    void setStep(uint8_t step) {
+        if (beatnum>step) beatnum = step;
+        setPattern(step, beatnum, offsetnum);
+    }
+
+    void setOffset(uint8_t offset) {
+        setPattern(stepsize, beatnum, offset);
     }
 
     uint32_t nextPattern()
