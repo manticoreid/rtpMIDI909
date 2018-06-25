@@ -254,6 +254,59 @@ void loop() {
 
 void OnAppleMidiControlChange(byte channel, byte note, byte value) {
     if (channel==10) {
+
+        if (note == 0)
+        {
+            pattern[0].setStep(value);
+            return;
+        }
+
+        if (note == 1)
+        {
+            pattern[0].setBeat(value);
+            return;
+        }
+
+        if (note == 2)
+        {
+            pattern[1].setStep(value);
+            return;
+        }
+
+        if (note == 3)
+        {
+            pattern[1].setBeat(value);
+            return;
+        }
+
+
+        if (note == 4)
+        {
+            pattern[2].setStep(value);
+            return;
+        }
+
+        if (note == 5)
+        {
+            pattern[2].setBeat(value);
+            return;
+        }
+
+
+
+        if (note == 6)
+        {
+            pattern[3].setStep(value);
+            return;
+        }
+
+        if (note == 7)
+        {
+            pattern[3].setBeat(value);
+            return;
+        }
+
+
 //        if (note < 6)
 //        {
 //            pot_control[note] = value;
