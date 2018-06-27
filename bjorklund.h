@@ -99,20 +99,21 @@ class EuclideanModule
     uint8_t stepsize;
     uint8_t beatnum;
     uint8_t offsetnum;
-
+    bool rollback;
     uint8_t curstep;
 
     EuclideanModule() {
         curstep = 0;
         pattern = 0;
-        stepsize = 0;
-        breatnum = 0;
+        stepsize = 1;
+        beatnum = 0;
         offsetnum = 0;
+        rollback = false;
     }
 
     void setPattern(uint8_t step, uint8_t beat, uint8_t offset){
         stepsize = step;
-        breatnum = beat;
+        beatnum = beat;
         offsetnum = offset;
         pattern = euclidean_arr(step, beat, offset);
     }
@@ -147,6 +148,24 @@ class EuclideanModule
     {
         return (pattern & (1<<step));
     }
+
+    uint32_t getPatternTick(uint32_t step)
+    {
+        if (rollback){
+           curstep = (curstep+1)%stepsize;
+           rollback = false;
+        }else{
+           curstep = step%stepsize;
+        }
+        return (pattern & (1<<curstep));
+    }
+
+    void setRollback()
+    {
+        rollback = true;
+    }
+
+
 };
 
 

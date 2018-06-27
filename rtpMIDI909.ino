@@ -15,7 +15,7 @@
 #include "lib/AudioOutputI2S.h"
 
 #include "bjorklund.h"
-//#include "drum_sampler.h"
+#include "drum_sampler.h"
 #include "gamelan.h"
 
 AudioOutputI2S soundOut;
@@ -64,18 +64,18 @@ int16_t SYNTH909() {
   if (TAKCNT<TAKLEN) DRUMTOTAL+=(pgm_read_word_near(TAK + TAKCNT++)^32768)-32768;
   if (LUNGCNT<LUNGLEN) DRUMTOTAL+=(pgm_read_word_near(LUNG + LUNGCNT++)^32768)-32768;
   if (DLANGCNT<DLANGLEN) DRUMTOTAL+=(pgm_read_word_near(DLANG + DLANGCNT++)^32768)-32768;
-//  if (BD16CNT<BD16LEN) DRUMTOTAL+=(pgm_read_word_near(BD16 + BD16CNT++)^32768)-32768;
-//  if (BD16CNT<BD16LEN) DRUMTOTAL+=(pgm_read_word_near(BD16 + BD16CNT++)^32768)-32768;
-//  if (CP16CNT<CP16LEN) DRUMTOTAL+=(pgm_read_word_near(CP16 + CP16CNT++)^32768)-32768;
-//  if (CR16CNT<CR16LEN) DRUMTOTAL+=(pgm_read_word_near(CR16 + CR16CNT++)^32768)-32768;
-//  if (HH16CNT<HH16LEN) DRUMTOTAL+=(pgm_read_word_near(HH16 + HH16CNT++)^32768)-32768;
-//  if (HT16CNT<HT16LEN) DRUMTOTAL+=(pgm_read_word_near(HT16 + HT16CNT++)^32768)-32768;
-//  if (LT16CNT<LT16LEN) DRUMTOTAL+=(pgm_read_word_near(LT16 + LT16CNT++)^32768)-32768;
-//  if (MT16CNT<MT16LEN) DRUMTOTAL+=(pgm_read_word_near(MT16 + MT16CNT++)^32768)-32768;
-//  if (OH16CNT<OH16LEN) DRUMTOTAL+=(pgm_read_word_near(OH16 + OH16CNT++)^32768)-32768;
-//  if (RD16CNT<RD16LEN) DRUMTOTAL+=(pgm_read_word_near(RD16 + RD16CNT++)^32768)-32768;
-//  if (RS16CNT<RS16LEN) DRUMTOTAL+=(pgm_read_word_near(RS16 + RS16CNT++)^32768)-32768;
-//  if (SD16CNT<SD16LEN) DRUMTOTAL+=(pgm_read_word_near(SD16 + SD16CNT++)^32768)-32768;
+  if (BD16CNT<BD16LEN) DRUMTOTAL+=(pgm_read_word_near(BD16 + BD16CNT++)^32768)-32768;
+  if (BD16CNT<BD16LEN) DRUMTOTAL+=(pgm_read_word_near(BD16 + BD16CNT++)^32768)-32768;
+  if (CP16CNT<CP16LEN) DRUMTOTAL+=(pgm_read_word_near(CP16 + CP16CNT++)^32768)-32768;
+  if (CR16CNT<CR16LEN) DRUMTOTAL+=(pgm_read_word_near(CR16 + CR16CNT++)^32768)-32768;
+  if (HH16CNT<HH16LEN) DRUMTOTAL+=(pgm_read_word_near(HH16 + HH16CNT++)^32768)-32768;
+  if (HT16CNT<HT16LEN) DRUMTOTAL+=(pgm_read_word_near(HT16 + HT16CNT++)^32768)-32768;
+  if (LT16CNT<LT16LEN) DRUMTOTAL+=(pgm_read_word_near(LT16 + LT16CNT++)^32768)-32768;
+  if (MT16CNT<MT16LEN) DRUMTOTAL+=(pgm_read_word_near(MT16 + MT16CNT++)^32768)-32768;
+  if (OH16CNT<OH16LEN) DRUMTOTAL+=(pgm_read_word_near(OH16 + OH16CNT++)^32768)-32768;
+  if (RD16CNT<RD16LEN) DRUMTOTAL+=(pgm_read_word_near(RD16 + RD16CNT++)^32768)-32768;
+  if (RS16CNT<RS16LEN) DRUMTOTAL+=(pgm_read_word_near(RS16 + RS16CNT++)^32768)-32768;
+  if (SD16CNT<SD16LEN) DRUMTOTAL+=(pgm_read_word_near(SD16 + SD16CNT++)^32768)-32768;
   if  (DRUMTOTAL>32767) DRUMTOTAL=32767;
   if  (DRUMTOTAL<-32767) DRUMTOTAL=-32767;
 //  DRUMTOTAL+=32768;
@@ -138,7 +138,7 @@ void ICACHE_RAM_ATTR onTimerISR(){
   timer1_write(2000);//Next in 2mS
 }
 
-EuclideanModule pattern[4];
+EuclideanModule pattern[5];
 
 void setup() {
   //WiFi.forceSleepBegin();
@@ -218,32 +218,51 @@ void setup() {
   pot_control[4] = 0;
   pot_control[5] = 0;
 
-  pattern[0].createPattern(8,4);
-  pattern[1].createPattern(12,5);
-  pattern[2].createPattern(10,2);
-  pattern[3].createPattern(20,7);
+//  pattern[0].createPattern(8,4);
+//  pattern[1].createPattern(12,5);
+//  pattern[2].createPattern(10,2);
+//  pattern[3].createPattern(20,7);
 
-  seqTimer.attach(0.1, onTimerSEQ);
+  seqTimer.attach_ms(80, onTimerSEQ);
 
 }
 
+
+uint32_t tick = 0;
+
 void onTimerSEQ(){
-    if(pattern[0].nextPattern())
+
+    if(pattern[0].getPatternTick(tick))
     {
         TONGCNT=0;
     }
-    if(pattern[1].nextPattern())
+    if(pattern[1].getPatternTick(tick))
     {
         LUNGCNT=0;
     }
-    if(pattern[2].nextPattern())
+    if(pattern[2].getPatternTick(tick))
     {
         TAKCNT=0;
     }
-    if(pattern[3].nextPattern())
+    if(pattern[3].getPatternTick(tick))
     {
         THUNGCNT=0;
     }
+    if(pattern[4].getPatternTick(tick))
+    {
+        SD16CNT=0;
+    }
+
+    tick++;
+
+    if(tick == 0) {
+        pattern[0].setRollback();
+        pattern[1].setRollback();
+        pattern[2].setRollback();
+        pattern[3].setRollback();
+        pattern[4].setRollback();
+    }
+
 }
 
 void loop() {
@@ -306,6 +325,17 @@ void OnAppleMidiControlChange(byte channel, byte note, byte value) {
             return;
         }
 
+        if (note == 8)
+        {
+            pattern[4].setStep(value);
+            return;
+        }
+
+        if (note == 9)
+        {
+            pattern[4].setBeat(value);
+            return;
+        }
 
 //        if (note < 6)
 //        {
@@ -347,22 +377,22 @@ Ride Cymbal MIDI-51
     if(note==32) TAKCNT=0;
     if(note==33) LUNGCNT=0;
     if(note==34) DLANGCNT=0;
-//    if(note==35) BD16CNT=0;
-//    if(note==36) BD16CNT=0;
-//    if(note==37) RS16CNT=0;
-//    if(note==38) SD16CNT=0;
-//    if(note==39) CP16CNT=0;
-//    if(note==40) SD16CNT=0;
-//    if(note==41) LT16CNT=0;
-//    if(note==42) HH16CNT=0;
-//    if(note==43) LT16CNT=0;
-//    if(note==44) HH16CNT=0;
-//    if(note==45) MT16CNT=0;
-//    if(note==46) OH16CNT=0;
-//    if(note==47) MT16CNT=0;
-//    if(note==48) HT16CNT=0;
-//    if(note==49) CR16CNT=0;
-//    if(note==50) HT16CNT=0;
-//    if(note==51) RD16CNT=0;
+    if(note==35) BD16CNT=0;
+    if(note==36) BD16CNT=0;
+    if(note==37) RS16CNT=0;
+    if(note==38) SD16CNT=0;
+    if(note==39) CP16CNT=0;
+    if(note==40) SD16CNT=0;
+    if(note==41) LT16CNT=0;
+    if(note==42) HH16CNT=0;
+    if(note==43) LT16CNT=0;
+    if(note==44) HH16CNT=0;
+    if(note==45) MT16CNT=0;
+    if(note==46) OH16CNT=0;
+    if(note==47) MT16CNT=0;
+    if(note==48) HT16CNT=0;
+    if(note==49) CR16CNT=0;
+    if(note==50) HT16CNT=0;
+    if(note==51) RD16CNT=0;
   }
 }
