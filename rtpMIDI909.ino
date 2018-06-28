@@ -14,12 +14,18 @@
 
 #include "lib/AudioOutputI2S.h"
 
+#include "analogmultiplexer.h"
 #include "bjorklund.h"
 #include "drum_sampler.h"
 #include "gamelan.h"
 
 AudioOutputI2S soundOut;
+AnalogMultiplexerPin multiplexer;
 
+#define MUX_A D2
+#define MUX_B D1
+#define MUX_C D0
+#define MULTIPLEXED_ANALOG_INPUT A0
 
 extern "C" {
 #include "user_interface.h"
@@ -153,6 +159,10 @@ void setup() {
     delay(500);
   }
 
+
+  //setup potentio
+  multiplexer.setup(MUX_A, MUX_B, MUX_C, MULTIPLEXED_ANALOG_INPUT);
+
   // These are fixed by the synthesis routines
   soundOut.SetRate(44100);
   soundOut.SetBitsPerSample(16);
@@ -218,7 +228,12 @@ void setup() {
   pot_control[4] = 0;
   pot_control[5] = 0;
 
-//  pattern[0].createPattern(8,4);
+  pattern[0].setPattern(16,0);
+  pattern[1].setPattern(16,0);
+  pattern[2].setPattern(16,0);
+  pattern[3].setPattern(16,0);
+  pattern[4].setPattern(16,0);
+
 //  pattern[1].createPattern(12,5);
 //  pattern[2].createPattern(10,2);
 //  pattern[3].createPattern(20,7);
@@ -229,8 +244,34 @@ void setup() {
 
 
 uint32_t tick = 0;
+uint16_t pot_beat = 0;
+uint16_t pot_beat_prev = 0;
+
+uint8_t values[8]       = {0,0,0,0,0,0,0,0};
+uint8_t values_old[8]   = {0,0,0,0,0,0,0,0};
+
 
 void onTimerSEQ(){
+
+//    pot_beat = analogRead(A0) >> 6;
+//    if (pot_beat != pot_beat_prev)
+//    {
+//        pattern[0].setBeat(pot_beat);
+//        pot_beat_prev = pot_beat;
+//    }
+
+
+//    pot2 = multiplexer.read(1, 10)>>5;
+
+
+    for (int channel = 0; channel < 4; channel++) {
+      values[channel] =  multiplexer.read(channel, 10)>>5;
+      if (values[channel] != values_old[channel]) {
+          pattern[channel].setBeat(values[channel]);
+          values_old[channel] = values[channel];
+      }
+    }
+
 
     if(pattern[0].getPatternTick(tick))
     {
