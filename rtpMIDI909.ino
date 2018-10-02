@@ -1,31 +1,41 @@
 #include <Arduino.h>
 #include "ESP8266WiFi.h"
-#include <WiFiClient.h>
-#include <WiFiUdp.h>
 #include <i2s.h>
 #include <i2s_reg.h>
 #include <pgmspace.h>
-#include "AppleMidi.h"
 #include <Ticker.h>
+#include "AppleMidi.h"
 
 
+#ifdef ENABLE_WIFI
 #include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <WiFiClient.h>
 #include <ArduinoOTA.h>
 
-#include "lib/AudioOutputI2S.h"
+#endif
 
+
+#include <ESP8266WebServer.h>
+#include <DNSServer.h>
+#include <FS.h>
+#include <PersWiFiManager.h>
+
+
+#include "lib/AudioOutputI2S.h"
 #include "analogmultiplexer.h"
 #include "bjorklund.h"
 #include "drum_sampler.h"
 #include "gamelan.h"
 
-AudioOutputI2S soundOut;
+AudioOutputI2S * soundOut;
 AnalogMultiplexerPin multiplexer;
 
 #define MUX_A D2
 #define MUX_B D1
 #define MUX_C D0
 #define MULTIPLEXED_ANALOG_INPUT A0
+
 
 extern "C" {
 #include "user_interface.h"
@@ -36,8 +46,20 @@ extern "C" {
 char ssid[] = "RUMAH"; //  your network SSID (name)
 char pass[] = "rumah4321";    // your network password (use for WPA, or use as key for WEP)
 
-APPLEMIDI_CREATE_INSTANCE(WiFiUDP, AppleMIDI); // see definition in AppleMidi_Defs.h
 
+#define WIFI_AP_SSID "8BITMIXTAPEWIFI"
+#define WIFI_AP_PASSWORD "thereisnospoon"
+
+// ----------------------- END CONFIG -----------------------------
+
+#ifdef ENABLE_WIFI
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#endif
+
+//#ifdef ENABLE_WIFI
+APPLEMIDI_CREATE_INSTANCE(WiFiUDP, AppleMIDI); // see definition in AppleMidi_Defs.h
+//#endif
 
 // Non-blocking I2S write for left and right 16-bit PCM
 //bool ICACHE_FLASH_ATTR i2s_write_lr_nb(int16_t left, int16_t right){
@@ -60,6 +82,7 @@ int16_t DAC=0;
 uint16_t err;
 
 uint8_t pot_control[6];
+uint8_t ota_running = 0;
 
 Ticker seqTimer;
 
@@ -82,6 +105,7 @@ int16_t SYNTH909() {
   if (RD16CNT<RD16LEN) DRUMTOTAL+=(pgm_read_word_near(RD16 + RD16CNT++)^32768)-32768;
   if (RS16CNT<RS16LEN) DRUMTOTAL+=(pgm_read_word_near(RS16 + RS16CNT++)^32768)-32768;
   if (SD16CNT<SD16LEN) DRUMTOTAL+=(pgm_read_word_near(SD16 + SD16CNT++)^32768)-32768;
+
   if  (DRUMTOTAL>32767) DRUMTOTAL=32767;
   if  (DRUMTOTAL<-32767) DRUMTOTAL=-32767;
 //  DRUMTOTAL+=32768;
@@ -106,7 +130,7 @@ void ICACHE_RAM_ATTR onTimerISR(){
     sample[0] = DAC;
     sample[1] = 0;
 
-    soundOut.ConsumeSample(sample);
+    soundOut->ConsumeSample(sample);
 
 
     //----------------- Pulse Density Modulated 16-bit I2S DAC --------------------
@@ -147,27 +171,47 @@ void ICACHE_RAM_ATTR onTimerISR(){
 EuclideanModule pattern[5];
 
 void setup() {
-  //WiFi.forceSleepBegin();
-  //delay(1);
+
+
+
+
+#ifdef ENABLE_WIFI
+  #ifdef ENABLE_WIFI_AP
+  WiFi.softAP(ssid, password);
+  #else
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+  #endif
+#else
+//    WiFi.forceSleepBegin();
+//    delay(1);
+#endif
+
+    WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASSWORD);
+
   system_update_cpu_freq(160);
 
   //Serial.begin(9600);
 
-  WiFi.begin(ssid, pass);
+//  WiFi.begin(ssid, pass);
+////  WiFi.softAP(ssid, "password");
 
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
+//  while (WiFi.status() != WL_CONNECTED) {
+//    delay(500);
+//  }
 
 
   //setup potentio
-  multiplexer.setup(MUX_A, MUX_B, MUX_C, MULTIPLEXED_ANALOG_INPUT);
+//  multiplexer.setup(MUX_A, MUX_B, MUX_C, MULTIPLEXED_ANALOG_INPUT);
 
   // These are fixed by the synthesis routines
-  soundOut.SetRate(44100);
-  soundOut.SetBitsPerSample(16);
-  soundOut.SetChannels(2);
-  soundOut.begin();
+  soundOut = new AudioOutputI2S();
+  soundOut->SetRate(44100);
+  soundOut->SetBitsPerSample(16);
+  soundOut->SetChannels(2);
+  soundOut->begin();
 
   /*
   //DAC USING AudioOut Lib
@@ -180,11 +224,14 @@ void setup() {
   //Serial.print(F("IP address is "));
   //Serial.println(WiFi.localIP());
 
+//#ifdef ENABLE_WIFI
 
   AppleMIDI.begin("ESP909"); // 'ESP909' will show up as the session name
 
   AppleMIDI.OnReceiveNoteOn(OnAppleMidiNoteOn);
   AppleMIDI.OnReceiveControlChange(OnAppleMidiControlChange);
+
+//#endif
 
 //  i2s_begin();
 //  i2s_set_rate(22050); //THRASH
@@ -193,33 +240,34 @@ void setup() {
   timer1_enable(TIM_DIV16, TIM_EDGE, TIM_SINGLE);
   timer1_write(2000); //Service at 2mS intervall
 
+#ifdef ENABLE_WIFI
+
   ArduinoOTA.setHostname("﻿ESP_123456");
 
   ArduinoOTA.onStart([]() {
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH)
-      type = "sketch";
-    else // U_SPIFFS
-      type = "filesystem";
-
-    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-    Serial.println("Start updating " + type);
+    seqTimer.detach();
+    timer1_disable();
+    ota_running = 1;
   });
+
   ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
+//    Serial.println("\nEnd");
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+//    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+//    Serial.printf("Error[%u]: ", error);
+//    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+//    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+//    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+//    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+//    else if (error == OTA_END_ERROR) Serial.println("End Failed");
   });
+
   ArduinoOTA.begin();
+
+#endif
 
   pot_control[0] = 0;
   pot_control[1] = 0;
@@ -242,6 +290,8 @@ void setup() {
 
 }
 
+int sensor = 0;
+int sensor_prev = 0;
 
 uint32_t tick = 0;
 uint16_t pot_beat = 0;
@@ -291,7 +341,7 @@ void onTimerSEQ(){
     }
     if(pattern[4].getPatternTick(tick))
     {
-        SD16CNT=0;
+//        SD16CNT=0;
     }
 
     tick++;
@@ -307,8 +357,22 @@ void onTimerSEQ(){
 }
 
 void loop() {
+
+#ifdef ENABLE_WIFI
  ArduinoOTA.handle();
+ if (ota_running) return;
+#endif
+
  AppleMIDI.run();
+
+
+// sensor = digitalRead(D3);
+// if(sensor != sensor_prev)
+// {
+//   onTimerSEQ();
+//   sensor_prev = sensor;
+// }
+
 }
 
 
@@ -378,10 +442,10 @@ void OnAppleMidiControlChange(byte channel, byte note, byte value) {
             return;
         }
 
-//        if (note < 6)
-//        {
-//            pot_control[note] = value;
-//        }
+        if (note == 10)
+        {
+            pot_control[0] = value;
+        }
 
 //        if (note == 7) pattern[0].createPattern();
     }
@@ -435,5 +499,6 @@ Ride Cymbal MIDI-51
     if(note==49) CR16CNT=0;
     if(note==50) HT16CNT=0;
     if(note==51) RD16CNT=0;
+
   }
 }

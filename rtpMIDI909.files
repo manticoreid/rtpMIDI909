@@ -3,6 +3,7 @@ bjorklund.h
 drum_sampler.h
 drum_sampler.h
 gamelan.h
+kukuruyuk.h
 lib/AudioOutput.h
 lib/AudioOutput.h
 lib/AudioOutputI2S.cpp
@@ -46,6 +47,10 @@ module/ModuleInput.h
 module/ModuleInput.h
 module/ModuleInputSmooth.cpp
 module/ModuleInputSmooth.h
+module/ModuleOutput.cpp
+module/ModuleOutput.h
+module/ModuleWavetableOsc.cpp
+module/ModuleWavetableOsc.h
 module/Modules.h
 module/Synth.cpp
 module/Synth.cpp
@@ -53,6 +58,7 @@ module/Synth.h
 module/Synth.h
 module/defines.h
 module/defines.h
+module/globalwavetable.h
 mutable_peaks.h
 noteout-help.pd
 rtpMIDI909.ino

@@ -29,5 +29,11 @@
 /Users/xcorex/Library/Arduino15/packages/esp8266/hardware/esp8266/2.4.1/variants/%{BOARD}
 /Users/xcorex/Documents/Arduino/libraries/AppleMIDI/src/
 /Users/xcorex/Documents/Arduino/libraries/AppleMIDI/src/utility
+/Users/xcorex/Documents/Arduino/libraries/MAX6675-master/src/
+/Users/xcorex/Documents/Arduino/libraries/PersWiFiManager/src/
+/Users/xcorex/Documents/Arduino/libraries/PersWiFiManager
+/Users/xcorex/Documents/Arduino/libraries/BlynkESP8266_Lib/
+/Users/xcorex/Documents/Arduino/libraries/Blynk/src/
+
 lib
 module
